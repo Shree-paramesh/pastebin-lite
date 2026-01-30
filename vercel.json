@@ -1,0 +1,38 @@
+{
+  "version": 2,
+  "name": "pastebin-lite",
+  "builds": [
+    {
+      "src": "server/index.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "client/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "server/index.js"
+    },
+    {
+      "src": "/p/(.*)",
+      "dest": "server/index.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "client/build/$1"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "UPSTASH_REDIS_REST_URL": "@upstash_redis_rest_url",
+    "UPSTASH_REDIS_REST_TOKEN": "@upstash_redis_rest_token",
+    "CLIENT_URL": "@client_url",
+    "BASE_URL": "@base_url"
+  }
+}
