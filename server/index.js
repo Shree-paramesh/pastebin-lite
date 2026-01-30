@@ -404,42 +404,58 @@ app.get('/api/pastes/:id', async (req, res) => {
   }
 });
 
-// View paste HTML endpoint (doesn't count toward view limit)
+// View paste HTML endpoint (server-rendered HTML for Vercel)
 app.get('/p/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Validate ID
+
     if (!id || typeof id !== 'string' || id.length === 0 || id.length > 100) {
-      return res.status(404).sendFile(path.join(__dirname, '../client/build/index.html'));
+      return res.status(404).send("Paste not found");
     }
-    
+
     const paste = await getPaste(id);
-    
+
     if (!paste) {
-      return res.status(404).sendFile(path.join(__dirname, '../client/build/index.html'));
+      return res.status(404).send("Paste not found");
     }
-    
+
     const now = getCurrentTime(req);
-    
-    // Check if expired
-    if (paste.expires_at !== null && now >= paste.expires_at) {
+
+    if (paste.expires_at && now >= paste.expires_at) {
       await deletePaste(id);
-      return res.status(404).sendFile(path.join(__dirname, '../client/build/index.html'));
+      return res.status(404).send("Paste expired");
     }
-    
-    // Check if view limit exceeded (but don't decrement)
+
     if (paste.remaining_views !== null && paste.remaining_views <= 0) {
       await deletePaste(id);
-      return res.status(404).sendFile(path.join(__dirname, '../client/build/index.html'));
+      return res.status(404).send("Paste expired");
     }
-    
-    // Serve React app - it will handle the display
-    res.sendFile(path.join(__dirname, '../client/build/index.html'));
-    
+
+    // Safe HTML rendering
+    const escapeHtml = (text) =>
+      text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    res.setHeader("Content-Type", "text/html");
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Paste</title>
+          <meta charset="utf-8" />
+        </head>
+        <body>
+          <pre>${escapeHtml(paste.content)}</pre>
+        </body>
+      </html>
+    `);
   } catch (error) {
-    console.error('Error in /p/:id route:', error);
-    res.status(500).sendFile(path.join(__dirname, '../client/build/index.html'));
+    console.error("Error rendering paste:", error);
+    res.status(500).send("Internal server error");
   }
 });
 
