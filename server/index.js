@@ -322,13 +322,20 @@ app.post('/api/pastes', async (req, res) => {
     
     await savePaste(id, pasteData);
     
-    // Generate URL
-    const baseUrl = config.baseUrl || 
-                    (req.get('host').includes('localhost') 
-                      ? `http://${req.get('host')}`
-                      : `https://${req.get('host')}`);
+    // Generate URL (sanitize BASE_URL to avoid newline / trailing slash issues)
+    let baseUrl = config.baseUrl;
+
+    if (baseUrl) {
+      baseUrl = baseUrl.trim().replace(/\/+$/, "");
+    } else {
+      const host = req.get("host");
+      baseUrl = host.includes("localhost")
+        ? `http://${host}`
+        : `https://${host}`;
+    }
+
     const url = `${baseUrl}/p/${id}`;
-    
+
     res.status(201).json({ id, url });
     
   } catch (error) {
@@ -533,3 +540,12 @@ start().catch(error => {
   console.error('Failed to start server:', error);
   process.exit(1);
 });
+
+
+if (require.main === module) {
+  app.listen(3001, () => {
+    console.log("Backend running on port 3001");
+  });
+}
+
+module.exports = app;
